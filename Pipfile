@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 tmrl = "*"
+matplotlib = "*"
+opencv-python = "*"
+bezier = "*"
 
 [dev-packages]
 
