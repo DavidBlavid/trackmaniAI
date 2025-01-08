@@ -4,10 +4,14 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from math import floor
 
+from lane_processing.pipeline import pipeline
+
 # Dimensions of the actual images in observations:
 import tmrl.config.config_constants as cfg
-img_width = cfg.IMG_WIDTH
-img_height = cfg.IMG_HEIGHT
+# img_width = cfg.IMG_WIDTH
+# img_height = cfg.IMG_HEIGHT
+img_width = 64      # hardcoded to 64 for now
+img_height = 64
 imgs_buf_len = cfg.IMG_HIST_LEN
 
 # Here is the MLP:
@@ -81,7 +85,7 @@ class VanillaCNN(nn.Module):
         # - the current speed, gear and RPM measurements (3 floats)
         # - the 2 previous actions (2 x 3 floats), important because of the real-time nature of our controller
         # - when the module is the critic, the selected action (3 floats)
-        float_features = 12 if self.q_net else 9
+        float_features = 13 if self.q_net else 10
         self.mlp_input_features = self.flat_features + float_features
 
         # MLP layers:
@@ -109,6 +113,17 @@ class VanillaCNN(nn.Module):
             # For the policy, the next action (act) is what we are computing, so we don't have it:
             speed, gear, rpm, images, act1, act2 = x
 
+        # Do lane extraction on the newest image
+        current_image = images[0,0,:,:]
+        current_image = current_image.cpu().numpy()
+
+        dx = pipeline(current_image)
+        dx = torch.tensor(dx, dtype=torch.float32).unsqueeze(0)  # add batch dimension
+        dx = dx.unsqueeze(1)  # add feature dimension (shape becomes [1, 1])
+
+        # Resize all images to 64x64
+        images = F.interpolate(images, size=(64, 64), mode='bilinear', align_corners=False)
+
         # Forward pass of our images in the CNN:
         # (note that the competition environment outputs histories of 4 images
         # and the default config outputs these as 64 x 64 greyscale,
@@ -131,9 +146,10 @@ class VanillaCNN(nn.Module):
 
         # Finally, we can feed the result along our float values to the MLP:
         if self.q_net:
-            x = torch.cat((speed, gear, rpm, x, act1, act2, act), -1)
+            x = torch.cat((speed, gear, rpm, x, act1, act2, act, dx), -1)
         else:
-            x = torch.cat((speed, gear, rpm, x, act1, act2), -1)
+            x = torch.cat((speed, gear, rpm, x, act1, act2, dx), -1)
+        
         x = self.mlp(x)
 
         # And this gives us the output of our deep neural network :)
