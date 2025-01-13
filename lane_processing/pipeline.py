@@ -19,7 +19,7 @@ def compute_brightness(pixel):
     return brightness
 
 
-def create_lane_mask(image, threshold=0.25, max_val=255):
+def create_lane_mask(image, threshold=0.25, max_val=1.0):
 
 
     threshold = threshold * max_val

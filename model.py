@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from math import floor
+import numpy as np
 
 from lane_processing.pipeline import pipeline
 
@@ -112,14 +113,30 @@ class VanillaCNN(nn.Module):
         else:
             # For the policy, the next action (act) is what we are computing, so we don't have it:
             speed, gear, rpm, images, act1, act2 = x
+        
+        # find out if we train on the cpu or gpu
+        # we do this by checking the device of the input tensor
+        device = 'cuda' if speed.is_cuda else 'cpu'
 
-        # Do lane extraction on the newest image
-        current_image = images[0,0,:,:]
-        current_image = current_image.cpu().numpy()
+        # Do lane extraction on the newest image from each image buffer in the batch
+        # i.e., the first image in the each batch (for all i: [i, 0, :, :])
+        dx_vals = []
+        for i in range(images.shape[0]):
 
-        dx = pipeline(current_image)
-        dx = torch.tensor(dx, dtype=torch.float32).unsqueeze(0)  # add batch dimension
-        dx = dx.unsqueeze(1)  # add feature dimension (shape becomes [1, 1])
+            # get the newest image from the batch
+            current_image = images[i,0,:,:]
+
+            # convert to numpy array
+            # if on GPU, move to CPU first
+            current_image = current_image.cpu().numpy()
+
+            dx = pipeline(current_image)
+            dx_vals.append(dx)
+
+        dx = torch.tensor(dx_vals, dtype=torch.float32).to(device)
+        dx = dx.unsqueeze(1)
+
+        print(dx)
 
         # Resize all images to 64x64
         images = F.interpolate(images, size=(64, 64), mode='bilinear', align_corners=False)
