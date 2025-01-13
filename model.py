@@ -136,8 +136,6 @@ class VanillaCNN(nn.Module):
         dx = torch.tensor(dx_vals, dtype=torch.float32).to(device)
         dx = dx.unsqueeze(1)
 
-        print(dx)
-
         # Resize all images to 64x64
         images = F.interpolate(images, size=(64, 64), mode='bilinear', align_corners=False)
 
