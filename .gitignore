@@ -167,3 +167,15 @@ cython_debug/
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/.gitignore
 .DS_Store
+
+# custom ignores
+/lane_processing/output_images/
+/lane_processing/output_videos/
+/lane_processing/test_images_color/
+/lane_processing/images/
+.idea/inspectionProfiles
+camera_calc
+lane_processing/video
+camera_calc
+lane_processing/video
+images.zip
